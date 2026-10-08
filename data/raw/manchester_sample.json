@@ -1,0 +1,86 @@
+{
+  "nodes": [
+    {
+      "id": "piccadilly_station",
+      "name": "Manchester Piccadilly Station",
+      "latitude": 53.4774,
+      "longitude": -2.2308
+    },
+    {
+      "id": "piccadilly_gardens",
+      "name": "Piccadilly Gardens",
+      "latitude": 53.4809,
+      "longitude": -2.2374
+    },
+    {
+      "id": "oxford_road",
+      "name": "Oxford Road",
+      "latitude": 53.4722,
+      "longitude": -2.2389
+    },
+    {
+      "id": "market_street",
+      "name": "Market Street",
+      "latitude": 53.4826,
+      "longitude": -2.2415
+    },
+    {
+      "id": "manchester_royal_infirmary",
+      "name": "Manchester Royal Infirmary",
+      "latitude": 53.4631,
+      "longitude": -2.2278
+    }
+  ],
+  "edges": [
+    {
+      "source": "piccadilly_station",
+      "target": "piccadilly_gardens",
+      "distance_m": 850,
+      "gradient": 0.02,
+      "has_stairs": false,
+      "has_lift": false,
+      "surface": "paved",
+      "wheelchair_accessible": true
+    },
+    {
+      "source": "piccadilly_gardens",
+      "target": "oxford_road",
+      "distance_m": 1100,
+      "gradient": 0.03,
+      "has_stairs": false,
+      "has_lift": false,
+      "surface": "paved",
+      "wheelchair_accessible": true
+    },
+    {
+      "source": "oxford_road",
+      "target": "manchester_royal_infirmary",
+      "distance_m": 900,
+      "gradient": 0.04,
+      "has_stairs": false,
+      "has_lift": false,
+      "surface": "paved",
+      "wheelchair_accessible": true
+    },
+    {
+      "source": "piccadilly_gardens",
+      "target": "market_street",
+      "distance_m": 400,
+      "gradient": 0.01,
+      "has_stairs": true,
+      "has_lift": false,
+      "surface": "paved",
+      "wheelchair_accessible": false
+    },
+    {
+      "source": "market_street",
+      "target": "manchester_royal_infirmary",
+      "distance_m": 1200,
+      "gradient": 0.07,
+      "has_stairs": false,
+      "has_lift": false,
+      "surface": "paved",
+      "wheelchair_accessible": true
+    }
+  ]
+}
