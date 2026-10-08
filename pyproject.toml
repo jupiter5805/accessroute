@@ -1,0 +1,9 @@
+[project]
+name = "accessroute"
+version = "0.1.0"
+description = "Accessibility-aware routing platform"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
