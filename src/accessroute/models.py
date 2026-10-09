@@ -24,3 +24,9 @@ class AccessibilityProfile(BaseModel):
     avoid_stairs: bool = False
     max_gradient: float = Field(default=0.08, ge=0, le=1)
     require_lift: bool = False
+
+
+class RouteRequest(BaseModel):
+    origin: str
+    destination: str
+    profile: AccessibilityProfile
