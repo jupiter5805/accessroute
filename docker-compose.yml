@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: accessroute-postgres
+    environment:
+      POSTGRES_DB: accessroute
+      POSTGRES_USER: accessroute
+      POSTGRES_PASSWORD: accessroute_dev
+    ports:
+      - "5434:5432"
+    volumes:
+      - accessroute_pgdata:/var/lib/postgresql/data
+
+volumes:
+  accessroute_pgdata:
