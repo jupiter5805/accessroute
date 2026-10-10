@@ -47,7 +47,7 @@ def build_accessible_graph(
     graph: nx.Graph,
     profile: AccessibilityProfile,
 ) -> nx.Graph:
-    accessible_graph = nx.Graph()
+    accessible_graph = nx.DiGraph() if graph.is_directed() else nx.Graph()
 
     accessible_graph.add_nodes_from(graph.nodes(data=True))
 
