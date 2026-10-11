@@ -1,0 +1,8 @@
+psycopg[binary]
+sqlalchemy
+geoalchemy2
+osmnx
+SRTM.py
+networkx
+pydantic
+httpx

@@ -1,0 +1,14 @@
+FROM apache/airflow:2.10.5-python3.12
+
+USER root
+
+RUN python3 -m venv /home/airflow/accessroute-venv \
+    && chown -R airflow:0 /home/airflow/accessroute-venv
+
+USER airflow
+
+COPY requirements-airflow.txt /tmp/requirements-airflow.txt
+
+RUN /home/airflow/accessroute-venv/bin/pip install \
+    --no-cache-dir \
+    -r /tmp/requirements-airflow.txt

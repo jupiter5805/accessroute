@@ -1,15 +1,60 @@
 services:
+
   postgres:
     image: postgis/postgis:16-3.4
+    platform: linux/amd64
     container_name: accessroute-postgres
+
     environment:
       POSTGRES_DB: accessroute
       POSTGRES_USER: accessroute
       POSTGRES_PASSWORD: accessroute_dev
+
     ports:
       - "5434:5432"
+
     volumes:
       - accessroute_pgdata:/var/lib/postgresql/data
 
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U accessroute -d accessroute"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+
+    container_name: accessroute-airflow
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+
+      DATABASE_URL: "postgresql+psycopg://accessroute:accessroute_dev@postgres:5432/accessroute"
+
+    command: standalone
+
+    ports:
+      - "8081:8080"
+
+    volumes:
+      - ./:/opt/accessroute
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_home:/opt/airflow
+
+
 volumes:
   accessroute_pgdata:
+  airflow_home:
