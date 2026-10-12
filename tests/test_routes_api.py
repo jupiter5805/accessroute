@@ -106,3 +106,61 @@ def test_invalid_gradient_returns_422():
     )
 
     assert response.status_code == 422
+
+
+def test_coordinate_route(monkeypatch):
+    import src.accessroute.main as main_module
+
+    # Use our small sample graph instead of the real PostGIS database.
+    monkeypatch.setattr(
+        main_module,
+        "load_graph_from_postgres",
+        lambda: main_module.sample_graph,
+    )
+
+    # Pretend PostGIS snapped the two coordinates to these nodes.
+    nearest_nodes = iter(
+        [
+            "piccadilly_gardens",
+            "manchester_royal_infirmary",
+        ]
+    )
+
+    monkeypatch.setattr(
+        main_module,
+        "find_nearest_node",
+        lambda latitude, longitude: next(nearest_nodes),
+    )
+
+    response = client.post(
+        "/routes/coordinates",
+        json={
+            "origin": {
+                "latitude": 53.4810,
+                "longitude": -2.2370,
+            },
+            "destination": {
+                "latitude": 53.4631,
+                "longitude": -2.2278,
+            },
+            "profile": {
+                "wheelchair": False,
+                "avoid_stairs": False,
+                "max_gradient": 0.08,
+                "require_lift": False,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["snapped_origin_node"] == "piccadilly_gardens"
+    assert data["snapped_destination_node"] == "manchester_royal_infirmary"
+
+    assert data["route"][0]["node_id"] == "piccadilly_gardens"
+    assert data["route"][-1]["node_id"] == "manchester_royal_infirmary"
+
+    assert data["distance_m"] > 0
+    assert len(data["route"]) >= 2
