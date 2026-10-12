@@ -1,17 +1,27 @@
 from fastapi import FastAPI, HTTPException
 
+from src.accessroute.database.graph_loader import (
+    find_nearest_node,
+    load_graph_from_postgres,
+)
 from src.accessroute.graph import load_graph
-from src.accessroute.models import RouteRequest
-from src.accessroute.routing import NoAccessibleRouteError, find_route
+from src.accessroute.models import (
+    CoordinateRouteRequest,
+    RouteRequest,
+)
+from src.accessroute.routing import (
+    NoAccessibleRouteError,
+    find_route,
+)
 
 
 app = FastAPI(
     title="AccessRoute",
     description="Accessibility-aware routing API",
-    version="0.1.0",
+    version="0.2.0",
 )
 
-graph = load_graph("data/raw/manchester_sample.json")
+sample_graph = load_graph("data/raw/manchester_sample.json")
 
 
 @app.get("/health")
@@ -26,7 +36,7 @@ def health():
 def create_route(request: RouteRequest):
     try:
         result = find_route(
-            graph=graph,
+            graph=sample_graph,
             origin=request.origin,
             destination=request.destination,
             profile=request.profile,
@@ -44,10 +54,64 @@ def create_route(request: RouteRequest):
             detail=str(exc),
         ) from exc
 
+    return result
+
+
+@app.post("/routes/coordinates")
+def create_coordinate_route(
+    request: CoordinateRouteRequest,
+):
+    try:
+        graph = load_graph_from_postgres()
+
+        origin_node = find_nearest_node(
+            request.origin.latitude,
+            request.origin.longitude,
+        )
+
+        destination_node = find_nearest_node(
+            request.destination.latitude,
+            request.destination.longitude,
+        )
+
+        result = find_route(
+            graph=graph,
+            origin=origin_node,
+            destination=destination_node,
+            profile=request.profile,
+        )
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    except NoAccessibleRouteError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    route_coordinates = []
+
+    for node_id in result["path"]:
+        node = graph.nodes[node_id]
+
+        route_coordinates.append(
+            {
+                "node_id": node_id,
+                "latitude": node["latitude"],
+                "longitude": node["longitude"],
+            }
+        )
+
     return {
-        "origin": result["origin"],
-        "destination": result["destination"],
-        "route": result["path"],
+        "origin": request.origin.model_dump(),
+        "destination": request.destination.model_dump(),
+        "snapped_origin_node": origin_node,
+        "snapped_destination_node": destination_node,
         "distance_m": result["distance_m"],
+        "route": route_coordinates,
         "profile": request.profile.model_dump(),
     }

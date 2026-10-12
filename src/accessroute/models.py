@@ -30,3 +30,14 @@ class RouteRequest(BaseModel):
     origin: str
     destination: str
     profile: AccessibilityProfile
+
+
+class Coordinate(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+class CoordinateRouteRequest(BaseModel):
+    origin: Coordinate
+    destination: Coordinate
+    profile: AccessibilityProfile
