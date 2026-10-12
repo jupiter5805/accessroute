@@ -54,7 +54,13 @@ def create_route(request: RouteRequest):
             detail=str(exc),
         ) from exc
 
-    return result
+    return {
+        "origin": result["origin"],
+        "destination": result["destination"],
+        "route": result["path"],
+        "distance_m": result["distance_m"],
+        "profile": request.profile.model_dump(),
+    }
 
 
 @app.post("/routes/coordinates")
