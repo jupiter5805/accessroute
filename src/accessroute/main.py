@@ -121,3 +121,36 @@ def create_coordinate_route(
         "route": route_coordinates,
         "profile": request.profile.model_dump(),
     }
+
+
+@app.post("/routes/compare")
+def compare_coordinate_routes(request: CoordinateRouteRequest):
+    from src.accessroute.comparison import compare_routes
+
+    graph = load_graph_from_postgres()
+
+    origin_node = find_nearest_node(
+        request.origin.latitude,
+        request.origin.longitude,
+    )
+
+    destination_node = find_nearest_node(
+        request.destination.latitude,
+        request.destination.longitude,
+    )
+
+    try:
+        result = compare_routes(
+            graph,
+            origin_node,
+            destination_node,
+            request.profile,
+        )
+    except NoAccessibleRouteError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "origin_node": origin_node,
+        "destination_node": destination_node,
+        **result,
+    }
