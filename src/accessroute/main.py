@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from src.accessroute.database.graph_loader import (
     find_nearest_node,
@@ -154,3 +155,9 @@ def compare_coordinate_routes(request: CoordinateRouteRequest):
         "destination_node": destination_node,
         **result,
     }
+
+
+
+@app.get("/map")
+def map_page():
+    return FileResponse("static/map.html")
