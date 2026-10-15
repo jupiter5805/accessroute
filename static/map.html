@@ -21,9 +21,22 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors"
 }).addTo(map);
 
-L.marker([53.4774, -2.2308])
-  .addTo(map)
-  .bindPopup("Manchester Piccadilly");
+let startMarker = null;
+let endMarker = null;
+
+map.on("click", function(e) {
+  if (!startMarker) {
+    startMarker = L.marker(e.latlng)
+      .addTo(map)
+      .bindPopup("Start")
+      .openPopup();
+  } else if (!endMarker) {
+    endMarker = L.marker(e.latlng)
+      .addTo(map)
+      .bindPopup("Destination")
+      .openPopup();
+  }
+});
 </script>
 
 </body>
