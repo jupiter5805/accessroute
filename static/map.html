@@ -16,11 +16,19 @@
       padding: 8px 12px;
       border-radius: 6px;
     }
+  #reset {
+      position: absolute;
+      top: 55px;
+      left: 50px;
+      z-index: 1000;
+      padding: 7px 12px;
+    }
   </style>
 </head>
 <body>
 
 <div id="status">Click a start point, then a destination.</div>
+<button id="reset" onclick="resetRoute()">Reset Route</button>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -34,6 +42,19 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let startMarker;
 let endMarker;
 let routeLine;
+
+function resetRoute() {
+  if (startMarker) map.removeLayer(startMarker);
+  if (endMarker) map.removeLayer(endMarker);
+  if (routeLine) map.removeLayer(routeLine);
+
+  startMarker = null;
+  endMarker = null;
+  routeLine = null;
+
+  document.getElementById("status").innerText =
+    "Click a start point, then a destination.";
+}
 
 map.on("click", async function(e) {
 
