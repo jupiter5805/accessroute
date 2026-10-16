@@ -7,10 +7,20 @@
   <style>
     body { margin: 0; font-family: Arial; }
     #map { height: 100vh; }
+    #status {
+      position: absolute;
+      top: 10px;
+      left: 50px;
+      z-index: 1000;
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
 
+<div id="status">Click a start point, then a destination.</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -21,20 +31,59 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors"
 }).addTo(map);
 
-let startMarker = null;
-let endMarker = null;
+let startMarker;
+let endMarker;
+let routeLine;
 
-map.on("click", function(e) {
+map.on("click", async function(e) {
+
   if (!startMarker) {
-    startMarker = L.marker(e.latlng)
-      .addTo(map)
-      .bindPopup("Start")
-      .openPopup();
-  } else if (!endMarker) {
-    endMarker = L.marker(e.latlng)
-      .addTo(map)
-      .bindPopup("Destination")
-      .openPopup();
+    startMarker = L.marker(e.latlng).addTo(map).bindPopup("Start").openPopup();
+    document.getElementById("status").innerText = "Now click your destination.";
+    return;
+  }
+
+  if (!endMarker) {
+    endMarker = L.marker(e.latlng).addTo(map).bindPopup("Destination").openPopup();
+    document.getElementById("status").innerText = "Finding accessible route...";
+
+    const response = await fetch("/routes/coordinates", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        origin: {
+          latitude: startMarker.getLatLng().lat,
+          longitude: startMarker.getLatLng().lng
+        },
+        destination: {
+          latitude: endMarker.getLatLng().lat,
+          longitude: endMarker.getLatLng().lng
+        },
+        profile: {
+          wheelchair: true,
+          avoid_stairs: true,
+          max_gradient: 0.08,
+          require_lift: false
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      document.getElementById("status").innerText = "No accessible route found.";
+      return;
+    }
+
+    const coordinates = data.route.map(
+      point => [point.latitude, point.longitude]
+    );
+
+    routeLine = L.polyline(coordinates).addTo(map);
+    map.fitBounds(routeLine.getBounds());
+
+    document.getElementById("status").innerText =
+      `Accessible route: ${(data.distance_m / 1000).toFixed(2)} km`;
   }
 });
 </script>
