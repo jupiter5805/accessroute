@@ -16,7 +16,18 @@
       padding: 8px 12px;
       border-radius: 6px;
     }
-  #reset {
+  #controls {
+      position: absolute;
+      top: 95px;
+      left: 50px;
+      z-index: 1000;
+      background: white;
+      padding: 10px;
+      border-radius: 6px;
+      line-height: 1.7;
+    }
+
+    #reset {
       position: absolute;
       top: 55px;
       left: 50px;
@@ -29,6 +40,19 @@
 
 <div id="status">Click a start point, then a destination.</div>
 <button id="reset" onclick="resetRoute()">Reset Route</button>
+
+<div id="controls">
+  <label><input type="checkbox" id="wheelchair" checked> Wheelchair</label><br>
+  <label><input type="checkbox" id="avoidStairs" checked> Avoid stairs</label><br>
+  <label>Max gradient:
+    <select id="maxGradient">
+      <option value="0.05">5%</option>
+      <option value="0.08" selected>8%</option>
+      <option value="0.10">10%</option>
+      <option value="0.15">15%</option>
+    </select>
+  </label>
+</div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -81,9 +105,11 @@ map.on("click", async function(e) {
           longitude: endMarker.getLatLng().lng
         },
         profile: {
-          wheelchair: true,
-          avoid_stairs: true,
-          max_gradient: 0.08,
+          wheelchair: document.getElementById("wheelchair").checked,
+          avoid_stairs: document.getElementById("avoidStairs").checked,
+          max_gradient: parseFloat(
+            document.getElementById("maxGradient").value
+          ),
           require_lift: false
         }
       })
