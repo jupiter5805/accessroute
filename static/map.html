@@ -66,15 +66,18 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 let startMarker;
 let endMarker;
 let routeLine;
+let standardRouteLine;
 
 function resetRoute() {
   if (startMarker) map.removeLayer(startMarker);
   if (endMarker) map.removeLayer(endMarker);
   if (routeLine) map.removeLayer(routeLine);
+  if (standardRouteLine) map.removeLayer(standardRouteLine);
 
   startMarker = null;
   endMarker = null;
   routeLine = null;
+  standardRouteLine = null;
 
   document.getElementById("status").innerText =
     "Click a start point, then a destination.";
@@ -92,7 +95,7 @@ map.on("click", async function(e) {
     endMarker = L.marker(e.latlng).addTo(map).bindPopup("Destination").openPopup();
     document.getElementById("status").innerText = "Finding accessible route...";
 
-    const response = await fetch("/routes/coordinates", {
+    const response = await fetch("/routes/compare", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -122,15 +125,27 @@ map.on("click", async function(e) {
       return;
     }
 
-    const coordinates = data.route.map(
+    const accessibleCoordinates = data.accessible_route.coordinates.map(
       point => [point.latitude, point.longitude]
     );
 
-    routeLine = L.polyline(coordinates).addTo(map);
+    const standardCoordinates = data.standard_route.coordinates.map(
+      point => [point.latitude, point.longitude]
+    );
+
+    standardRouteLine = L.polyline(standardCoordinates, {
+      dashArray: "8,8"
+    }).addTo(map);
+
+    routeLine = L.polyline(accessibleCoordinates, {
+      weight: 6
+    }).addTo(map);
+
     map.fitBounds(routeLine.getBounds());
 
     document.getElementById("status").innerText =
-      `Accessible route: ${(data.distance_m / 1000).toFixed(2)} km`;
+      `Normal: ${(data.standard_route.distance_m / 1000).toFixed(2)} km | ` +
+      `Accessible: ${(data.accessible_route.distance_m / 1000).toFixed(2)} km`;
   }
 });
 </script>

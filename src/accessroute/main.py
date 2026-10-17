@@ -150,6 +150,15 @@ def compare_coordinate_routes(request: CoordinateRouteRequest):
     except NoAccessibleRouteError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    for route_name in ("standard_route", "accessible_route"):
+        result[route_name]["coordinates"] = [
+            {
+                "latitude": graph.nodes[node_id]["latitude"],
+                "longitude": graph.nodes[node_id]["longitude"],
+            }
+            for node_id in result[route_name]["path"]
+        ]
+
     return {
         "origin_node": origin_node,
         "destination_node": destination_node,
