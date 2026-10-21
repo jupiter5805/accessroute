@@ -164,3 +164,37 @@ def test_coordinate_route(monkeypatch):
 
     assert data["distance_m"] > 0
     assert len(data["route"]) >= 2
+
+
+def test_place_search(monkeypatch):
+    import src.accessroute.main as main_module
+
+    async def fake_search_places(query):
+        return [
+            {
+                "name": "Manchester Piccadilly",
+                "latitude": 53.4774,
+                "longitude": -2.2308,
+                "type": "station",
+                "category": "railway",
+            }
+        ]
+
+    monkeypatch.setattr(
+        main_module,
+        "search_places",
+        fake_search_places,
+    )
+
+    response = client.get(
+        "/places/search",
+        params={"q": "Manchester Piccadilly"},
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["results"]) == 1
+    assert data["results"][0]["name"] == "Manchester Piccadilly"
+    assert data["results"][0]["latitude"] == 53.4774

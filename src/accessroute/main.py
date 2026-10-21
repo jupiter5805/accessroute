@@ -1,4 +1,9 @@
 from fastapi import FastAPI, HTTPException
+
+from src.accessroute.geocoding import (
+    GeocodingError,
+    search_places,
+)
 from fastapi.responses import FileResponse
 
 from src.accessroute.database.graph_loader import (
@@ -170,3 +175,20 @@ def compare_coordinate_routes(request: CoordinateRouteRequest):
 @app.get("/map")
 def map_page():
     return FileResponse("static/map.html")
+
+
+@app.get("/places/search")
+async def place_search(q: str):
+    try:
+        results = await search_places(q)
+
+    except GeocodingError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        ) from exc
+
+    return {
+        "query": q,
+        "results": results,
+    }

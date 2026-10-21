@@ -1,189 +1,471 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AccessRoute Manchester</title>
   <meta charset="utf-8">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+  <title>AccessRoute Manchester</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  >
+
   <style>
-    body { margin: 0; font-family: Arial; }
-    #map { height: 100vh; }
-    #status {
-      position: absolute;
-      top: 10px;
-      left: 50px;
-      z-index: 1000;
-      background: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-    }
-  #route-details {
-      position: absolute;
-      bottom: 25px;
-      right: 20px;
-      z-index: 1000;
-      background: white;
-      padding: 10px;
-      border-radius: 6px;
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
     }
 
-    #legend {
-      position: absolute;
-      bottom: 25px;
-      left: 20px;
-      z-index: 1000;
-      background: white;
-      padding: 10px;
-      border-radius: 6px;
+    #map {
+      height: 100vh;
     }
 
-    #controls {
+    #panel {
       position: absolute;
-      top: 95px;
+      top: 20px;
       left: 50px;
+      width: 320px;
       z-index: 1000;
       background: white;
-      padding: 10px;
-      border-radius: 6px;
-      line-height: 1.7;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.2);
     }
 
-    #reset {
-      position: absolute;
-      top: 55px;
-      left: 50px;
-      z-index: 1000;
-      padding: 7px 12px;
+    input,
+    select,
+    button {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 6px;
+      margin-bottom: 10px;
+      padding: 8px;
+    }
+
+    .results {
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .result {
+      padding: 7px;
+      cursor: pointer;
+      border-bottom: 1px solid #ddd;
+      font-size: 13px;
+    }
+
+    .result:hover {
+      background: #eee;
+    }
+
+    #summary {
+      margin-top: 12px;
+      font-size: 14px;
+      line-height: 1.5;
     }
   </style>
 </head>
+
 <body>
 
-<div id="status">Click a start point, then a destination.</div>
-<button id="reset" onclick="resetRoute()">Reset Route</button>
+<div id="panel">
 
-<div id="controls">
-  <label><input type="checkbox" id="wheelchair" checked> Wheelchair</label><br>
-  <label><input type="checkbox" id="avoidStairs" checked> Avoid stairs</label><br>
-  <label>Max gradient:
-    <select id="maxGradient">
-      <option value="0.05">5%</option>
-      <option value="0.08" selected>8%</option>
-      <option value="0.10">10%</option>
-      <option value="0.15">15%</option>
-    </select>
+  <h3>AccessRoute</h3>
+
+  <label>From</label>
+  <input
+    id="originSearch"
+    placeholder="Manchester Piccadilly"
+  >
+  <div id="originResults" class="results"></div>
+
+  <label>To</label>
+  <input
+    id="destinationSearch"
+    placeholder="Manchester Royal Infirmary"
+  >
+  <div id="destinationResults" class="results"></div>
+
+  <hr>
+
+  <label>
+    <input
+      type="checkbox"
+      id="wheelchair"
+      checked
+      style="width:auto"
+    >
+    Wheelchair accessible
   </label>
-</div>
-<div id="legend">
-  <b>Routes</b><br>
-  ━ Accessible route<br>
-  - - Standard route
+
+  <br>
+
+  <label>
+    <input
+      type="checkbox"
+      id="avoidStairs"
+      checked
+      style="width:auto"
+    >
+    Avoid stairs
+  </label>
+
+  <br><br>
+
+  <label>Maximum gradient</label>
+
+  <select id="maxGradient">
+    <option value="0.05">5%</option>
+    <option value="0.08" selected>8%</option>
+    <option value="0.10">10%</option>
+    <option value="0.15">15%</option>
+  </select>
+
+  <button onclick="calculateRoute()">
+    Find accessible route
+  </button>
+
+  <button onclick="resetRoute()">
+    Reset
+  </button>
+
+  <div id="summary"></div>
+
 </div>
 
-<div id="route-details"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-const map = L.map("map").setView([53.4808, -2.2426], 13);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap contributors"
-}).addTo(map);
+const map = L.map("map")
+  .setView([53.4808, -2.2426], 13);
 
-let startMarker;
-let endMarker;
-let routeLine;
-let standardRouteLine;
+L.tileLayer(
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  {
+    attribution: "&copy; OpenStreetMap contributors"
+  }
+).addTo(map);
 
-function resetRoute() {
-  if (startMarker) map.removeLayer(startMarker);
-  if (endMarker) map.removeLayer(endMarker);
-  if (routeLine) map.removeLayer(routeLine);
-  if (standardRouteLine) map.removeLayer(standardRouteLine);
 
-  startMarker = null;
-  endMarker = null;
-  routeLine = null;
-  standardRouteLine = null;
+let origin = null;
+let destination = null;
 
-  document.getElementById("status").innerText =
-    "Click a start point, then a destination.";
+let originMarker = null;
+let destinationMarker = null;
+
+let accessibleLine = null;
+let standardLine = null;
+
+
+async function searchPlaces(text) {
+
+  if (text.length < 3) {
+    return [];
+  }
+
+  const response = await fetch(
+    `/places/search?q=${encodeURIComponent(text)}`
+  );
+
+  const data = await response.json();
+
+  return data.results;
 }
 
-map.on("click", async function(e) {
 
-  if (!startMarker) {
-    startMarker = L.marker(e.latlng).addTo(map).bindPopup("Start").openPopup();
-    document.getElementById("status").innerText = "Now click your destination.";
+async function updateResults(
+  input,
+  resultBox,
+  type
+) {
+
+  const results = await searchPlaces(input.value);
+
+  resultBox.innerHTML = "";
+
+  results.forEach(place => {
+
+    const element = document.createElement("div");
+
+    element.className = "result";
+
+    element.innerText = place.name;
+
+    element.onclick = () => {
+
+      input.value = place.name;
+
+      resultBox.innerHTML = "";
+
+      selectPlace(type, place);
+    };
+
+    resultBox.appendChild(element);
+  });
+}
+
+
+function selectPlace(type, place) {
+
+  const position = [
+    place.latitude,
+    place.longitude
+  ];
+
+  if (type === "origin") {
+
+    origin = place;
+
+    if (originMarker) {
+      map.removeLayer(originMarker);
+    }
+
+    originMarker = L.marker(position)
+      .addTo(map)
+      .bindPopup("Start");
+
+  } else {
+
+    destination = place;
+
+    if (destinationMarker) {
+      map.removeLayer(destinationMarker);
+    }
+
+    destinationMarker = L.marker(position)
+      .addTo(map)
+      .bindPopup("Destination");
+  }
+
+  map.setView(position, 15);
+}
+
+
+document
+  .getElementById("originSearch")
+  .addEventListener("input", event => {
+
+    updateResults(
+      event.target,
+      document.getElementById("originResults"),
+      "origin"
+    );
+  });
+
+
+document
+  .getElementById("destinationSearch")
+  .addEventListener("input", event => {
+
+    updateResults(
+      event.target,
+      document.getElementById("destinationResults"),
+      "destination"
+    );
+  });
+
+
+async function calculateRoute() {
+
+  if (!origin || !destination) {
+
+    document.getElementById("summary").innerText =
+      "Select both a starting point and destination.";
+
     return;
   }
 
-  if (!endMarker) {
-    endMarker = L.marker(e.latlng).addTo(map).bindPopup("Destination").openPopup();
-    document.getElementById("status").innerText = "Finding accessible route...";
+  document.getElementById("summary").innerText =
+    "Calculating route...";
 
-    const response = await fetch("/routes/compare", {
+
+  const response = await fetch(
+    "/routes/compare",
+    {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
       body: JSON.stringify({
+
         origin: {
-          latitude: startMarker.getLatLng().lat,
-          longitude: startMarker.getLatLng().lng
+          latitude: origin.latitude,
+          longitude: origin.longitude
         },
+
         destination: {
-          latitude: endMarker.getLatLng().lat,
-          longitude: endMarker.getLatLng().lng
+          latitude: destination.latitude,
+          longitude: destination.longitude
         },
+
         profile: {
-          wheelchair: document.getElementById("wheelchair").checked,
-          avoid_stairs: document.getElementById("avoidStairs").checked,
-          max_gradient: parseFloat(
-            document.getElementById("maxGradient").value
-          ),
+
+          wheelchair:
+            document
+              .getElementById("wheelchair")
+              .checked,
+
+          avoid_stairs:
+            document
+              .getElementById("avoidStairs")
+              .checked,
+
+          max_gradient:
+            parseFloat(
+              document
+                .getElementById("maxGradient")
+                .value
+            ),
+
           require_lift: false
         }
       })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      document.getElementById("status").innerText = "No accessible route found.";
-      return;
     }
+  );
 
-    const accessibleCoordinates = data.accessible_route.coordinates.map(
-      point => [point.latitude, point.longitude]
+
+  const data = await response.json();
+
+
+  if (!response.ok) {
+
+    document.getElementById("summary").innerText =
+      data.detail || "No route found.";
+
+    return;
+  }
+
+
+  if (accessibleLine) {
+    map.removeLayer(accessibleLine);
+  }
+
+  if (standardLine) {
+    map.removeLayer(standardLine);
+  }
+
+
+  const accessibleCoords =
+    data.accessible_route.coordinates.map(
+      point => [
+        point.latitude,
+        point.longitude
+      ]
     );
 
-    const standardCoordinates = data.standard_route.coordinates.map(
-      point => [point.latitude, point.longitude]
+
+  const standardCoords =
+    data.standard_route.coordinates.map(
+      point => [
+        point.latitude,
+        point.longitude
+      ]
     );
 
-    standardRouteLine = L.polyline(standardCoordinates, {
+
+  standardLine = L.polyline(
+    standardCoords,
+    {
       dashArray: "8,8",
       weight: 4,
-      opacity: 0.7
-    }).addTo(map);
+      opacity: 0.6
+    }
+  ).addTo(map);
 
-    routeLine = L.polyline(accessibleCoordinates, {
+
+  accessibleLine = L.polyline(
+    accessibleCoords,
+    {
       weight: 6
-    }).addTo(map);
+    }
+  ).addTo(map);
 
-    map.fitBounds(routeLine.getBounds());
 
-    document.getElementById("status").innerText =
-      `Normal: ${(data.standard_route.distance_m / 1000).toFixed(2)} km | ` +
-      `Accessible: ${(data.accessible_route.distance_m / 1000).toFixed(2)} km`;
+  map.fitBounds(
+    accessibleLine.getBounds()
+  );
 
-    document.getElementById("route-details").innerHTML =
-      `<b>Accessibility improvements</b><br>
-       Score: ${data.accessible_route.accessibility_score}/100<br>
-       Stairs avoided: ${data.comparison.stairs_avoided}<br>
-       Steep sections avoided: ${data.comparison.steep_segments_avoided}<br>
-       Extra distance: ${data.comparison.extra_distance_m.toFixed(0)} m`;
+
+  const comparison = data.comparison;
+
+
+  document.getElementById("summary").innerHTML = `
+
+    <strong>Accessible route</strong><br>
+
+    Distance:
+    ${(data.accessible_route.distance_m / 1000).toFixed(2)}
+    km
+
+    <br>
+
+    Accessibility score:
+    ${data.accessible_route.accessibility_score}/100
+
+    <br><br>
+
+    <strong>Compared with shortest route</strong><br>
+
+    Extra distance:
+    ${comparison.extra_distance_m.toFixed(0)} m
+
+    <br>
+
+    Stairs avoided:
+    ${comparison.stairs_avoided}
+
+    <br>
+
+    Steep sections avoided:
+    ${comparison.steep_segments_avoided}
+  `;
+}
+
+
+function resetRoute() {
+
+  origin = null;
+  destination = null;
+
+  document.getElementById(
+    "originSearch"
+  ).value = "";
+
+  document.getElementById(
+    "destinationSearch"
+  ).value = "";
+
+  document.getElementById(
+    "summary"
+  ).innerHTML = "";
+
+  if (originMarker) {
+    map.removeLayer(originMarker);
   }
-});
+
+  if (destinationMarker) {
+    map.removeLayer(destinationMarker);
+  }
+
+  if (accessibleLine) {
+    map.removeLayer(accessibleLine);
+  }
+
+  if (standardLine) {
+    map.removeLayer(standardLine);
+  }
+
+  originMarker = null;
+  destinationMarker = null;
+  accessibleLine = null;
+  standardLine = null;
+}
+
 </script>
 
 </body>
