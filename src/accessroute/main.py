@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from src.accessroute.accessibility import analyse_route
 
 from src.accessroute.geocoding import (
     GeocodingError,
@@ -154,6 +155,18 @@ def compare_coordinate_routes(request: CoordinateRouteRequest):
         )
     except NoAccessibleRouteError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    result["standard_route"]["accessibility_analysis"] = analyse_route(
+        graph,
+        result["standard_route"]["path"],
+        request.profile,
+    )
+
+    result["accessible_route"]["accessibility_analysis"] = analyse_route(
+        graph,
+        result["accessible_route"]["path"],
+        request.profile,
+    )
 
     for route_name in ("standard_route", "accessible_route"):
         result[route_name]["coordinates"] = [
