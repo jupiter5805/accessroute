@@ -9,3 +9,4 @@ data/processed/*
 cache/
 .cache/
 models/*.joblib
+models/*.json

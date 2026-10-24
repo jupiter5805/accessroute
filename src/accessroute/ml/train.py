@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import joblib
 
@@ -59,13 +60,30 @@ def train_model():
         exist_ok=True,
     )
 
+    model_data = {
+        "pipeline": pipeline,
+        "feature_columns": FEATURE_COLUMNS,
+        "training_rows": len(df),
+    }
+
     joblib.dump(
-        {
-            "pipeline": pipeline,
-            "feature_columns": FEATURE_COLUMNS,
-            "training_rows": len(df),
-        },
+        model_data,
         MODEL_PATH,
+    )
+
+    metadata = {
+        "model": "IsolationForest",
+        "training_rows": len(df),
+        "feature_columns": FEATURE_COLUMNS,
+        "contamination": 0.03,
+        "n_estimators": 300,
+        "random_state": 42,
+    }
+
+    metadata_path = MODEL_PATH.with_suffix(".json")
+
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2)
     )
 
     predictions = pipeline.predict(features)
