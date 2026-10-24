@@ -55,7 +55,14 @@ with DAG(
         append_env=True,
     )
 
-    data_quality = BashOperator(
+    train_ml_model = BashOperator(
+    task_id="train_ml_model",
+    bash_command=f"{PYTHON} -m src.accessroute.ml.train",
+    cwd=PROJECT,
+    env=ENV,
+)
+
+data_quality = BashOperator(
         task_id="data_quality",
         bash_command=(
             f"cd {PROJECT} && "
@@ -65,4 +72,4 @@ with DAG(
         append_env=True,
     )
 
-    setup_database >> ingest_openstreetmap >> enrich_elevation >> data_quality
+    setup_database >> ingest_openstreetmap >> enrich_elevation >> data_quality >> train_ml_model
