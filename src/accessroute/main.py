@@ -1,4 +1,8 @@
 from fastapi import FastAPI, HTTPException
+
+from src.accessroute.ml.monitor import (
+    check_model_drift,
+)
 from src.accessroute.accessibility import analyse_route
 
 from src.accessroute.geocoding import (
@@ -205,3 +209,15 @@ async def place_search(q: str):
         "query": q,
         "results": results,
     }
+
+
+@app.get("/ml/monitor")
+def ml_monitor():
+    try:
+        return check_model_drift()
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        ) from exc
