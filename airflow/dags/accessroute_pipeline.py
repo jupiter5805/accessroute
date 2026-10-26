@@ -62,6 +62,17 @@ with DAG(
     env=ENV,
 )
 
+
+score_network_ml = BashOperator(
+    task_id="score_network_ml",
+    bash_command=(
+        f"{PYTHON} "
+        "-m src.accessroute.ml.score_network"
+    ),
+    cwd=PROJECT,
+    env=ENV,
+)
+
 data_quality = BashOperator(
         task_id="data_quality",
         bash_command=(
@@ -72,4 +83,4 @@ data_quality = BashOperator(
         append_env=True,
     )
 
-    setup_database >> ingest_openstreetmap >> enrich_elevation >> data_quality >> train_ml_model
+    setup_database >> ingest_openstreetmap >> enrich_elevation >> data_quality >> train_ml_model >> score_network_ml
