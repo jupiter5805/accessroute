@@ -41,3 +41,11 @@ class CoordinateRouteRequest(BaseModel):
     origin: Coordinate
     destination: Coordinate
     profile: AccessibilityProfile
+
+
+class MLCoordinateRouteRequest(CoordinateRouteRequest):
+    ml_risk_weight: float = Field(
+        default=5.0,
+        ge=0,
+        le=20,
+    )

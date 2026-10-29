@@ -221,3 +221,62 @@ def ml_monitor():
             status_code=503,
             detail=str(exc),
         ) from exc
+
+
+from src.accessroute.models import MLCoordinateRouteRequest
+from src.accessroute.ml_routing import (
+    attach_ml_scores,
+    find_ml_aware_route,
+)
+
+
+@app.post("/routes/ml-aware")
+def create_ml_aware_route(
+    request: MLCoordinateRouteRequest,
+):
+    graph = load_graph_from_postgres()
+
+    scores_attached = attach_ml_scores(
+        graph
+    )
+
+    origin_node = find_nearest_node(
+        request.origin.latitude,
+        request.origin.longitude,
+    )
+
+    destination_node = find_nearest_node(
+        request.destination.latitude,
+        request.destination.longitude,
+    )
+
+    try:
+        result = find_ml_aware_route(
+            graph=graph,
+            origin=origin_node,
+            destination=destination_node,
+            profile=request.profile,
+            risk_weight=request.ml_risk_weight,
+        )
+
+    except NoAccessibleRouteError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    coordinates = [
+        {
+            "latitude":
+                graph.nodes[node_id]["latitude"],
+            "longitude":
+                graph.nodes[node_id]["longitude"],
+        }
+        for node_id in result["path"]
+    ]
+
+    return {
+        **result,
+        "coordinates": coordinates,
+        "ml_scores_attached": scores_attached,
+    }
