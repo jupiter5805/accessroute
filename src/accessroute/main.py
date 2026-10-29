@@ -280,3 +280,70 @@ def create_ml_aware_route(
         "coordinates": coordinates,
         "ml_scores_attached": scores_attached,
     }
+
+
+from src.accessroute.ml_compare import (
+    compare_ml_routes,
+)
+
+
+@app.post("/routes/ml-compare")
+def compare_ml_route_options(
+    request: MLCoordinateRouteRequest,
+):
+    graph = load_graph_from_postgres()
+
+    scores_attached = attach_ml_scores(
+        graph
+    )
+
+    origin_node = find_nearest_node(
+        request.origin.latitude,
+        request.origin.longitude,
+    )
+
+    destination_node = find_nearest_node(
+        request.destination.latitude,
+        request.destination.longitude,
+    )
+
+    try:
+        result = compare_ml_routes(
+            graph=graph,
+            origin=origin_node,
+            destination=destination_node,
+            profile=request.profile,
+            risk_weight=request.ml_risk_weight,
+        )
+
+    except NoAccessibleRouteError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        ) from exc
+
+    for route_name in (
+        "accessible_route",
+        "ml_aware_route",
+    ):
+        result[route_name]["coordinates"] = [
+            {
+                "latitude":
+                    graph.nodes[node][
+                        "latitude"
+                    ],
+                "longitude":
+                    graph.nodes[node][
+                        "longitude"
+                    ],
+            }
+            for node in result[
+                route_name
+            ]["path"]
+        ]
+
+    return {
+        **result,
+        "ml_scores_attached":
+            scores_attached,
+    }
