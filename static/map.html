@@ -2,7 +2,6 @@
 <html>
 <head>
   <meta charset="utf-8">
-
   <title>AccessRoute Manchester</title>
 
   <link
@@ -24,12 +23,14 @@
       position: absolute;
       top: 20px;
       left: 50px;
-      width: 320px;
+      width: 350px;
+      max-height: 92vh;
+      overflow-y: auto;
       z-index: 1000;
       background: white;
-      padding: 16px;
-      border-radius: 10px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.2);
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.25);
     }
 
     input,
@@ -37,13 +38,21 @@
     button {
       width: 100%;
       box-sizing: border-box;
+      padding: 8px;
       margin-top: 6px;
       margin-bottom: 10px;
-      padding: 8px;
+    }
+
+    input[type="checkbox"] {
+      width: auto;
+    }
+
+    input[type="range"] {
+      padding: 0;
     }
 
     .results {
-      max-height: 150px;
+      max-height: 130px;
       overflow-y: auto;
     }
 
@@ -58,10 +67,29 @@
       background: #eee;
     }
 
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    #riskValue {
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
     #summary {
       margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
       font-size: 14px;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+
+    .route-key {
+      margin-top: 10px;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -70,30 +98,45 @@
 
 <div id="panel">
 
-  <h3>AccessRoute</h3>
+  <h2>AccessRoute</h2>
 
-  <label>From</label>
+  <p>
+    Accessibility-aware journey planning around Manchester.
+  </p>
+
+  <label><b>From</b></label>
+
   <input
     id="originSearch"
     placeholder="Manchester Piccadilly"
   >
-  <div id="originResults" class="results"></div>
 
-  <label>To</label>
+  <div
+    id="originResults"
+    class="results">
+  </div>
+
+
+  <label><b>To</b></label>
+
   <input
     id="destinationSearch"
     placeholder="Manchester Royal Infirmary"
   >
-  <div id="destinationResults" class="results"></div>
+
+  <div
+    id="destinationResults"
+    class="results">
+  </div>
 
   <hr>
+
 
   <label>
     <input
       type="checkbox"
       id="wheelchair"
       checked
-      style="width:auto"
     >
     Wheelchair accessible
   </label>
@@ -105,14 +148,16 @@
       type="checkbox"
       id="avoidStairs"
       checked
-      style="width:auto"
     >
     Avoid stairs
   </label>
 
   <br><br>
 
-  <label>Maximum gradient</label>
+
+  <label>
+    <b>Maximum gradient</b>
+  </label>
 
   <select id="maxGradient">
     <option value="0.05">5%</option>
@@ -121,31 +166,76 @@
     <option value="0.15">15%</option>
   </select>
 
+
+  <hr>
+
+
+  <label>
+    <b>Route preference</b>
+  </label>
+
+  <input
+    type="range"
+    id="riskWeight"
+    min="0"
+    max="20"
+    value="5"
+    step="1"
+  >
+
+  <div class="slider-labels">
+    <span>Shorter</span>
+    <span>Safer</span>
+  </div>
+
+  <div id="riskValue">
+    ML risk weighting: 5
+  </div>
+
+
   <button onclick="calculateRoute()">
-    Find accessible route
+    Find route
   </button>
 
   <button onclick="resetRoute()">
     Reset
   </button>
 
+
+  <div class="route-key">
+    <b>Map:</b><br>
+    Solid line = ML-aware route<br>
+    Dashed line = standard accessible route
+  </div>
+
+
   <div id="summary"></div>
 
 </div>
 
+
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script
+  src="https://unpkg.com/leaflet/dist/leaflet.js">
+</script>
+
 
 <script>
 
 const map = L.map("map")
-  .setView([53.4808, -2.2426], 13);
+  .setView(
+    [53.4808, -2.2426],
+    13
+  );
+
 
 L.tileLayer(
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
-    attribution: "&copy; OpenStreetMap contributors"
+    attribution:
+      "&copy; OpenStreetMap contributors"
   }
 ).addTo(map);
 
@@ -157,7 +247,25 @@ let originMarker = null;
 let destinationMarker = null;
 
 let accessibleLine = null;
-let standardLine = null;
+let mlLine = null;
+
+
+const riskSlider =
+  document.getElementById(
+    "riskWeight"
+  );
+
+
+riskSlider.addEventListener(
+  "input",
+  function () {
+
+    document.getElementById(
+      "riskValue"
+    ).innerText =
+      `ML risk weighting: ${this.value}`;
+  }
+);
 
 
 async function searchPlaces(text) {
@@ -167,10 +275,17 @@ async function searchPlaces(text) {
   }
 
   const response = await fetch(
-    `/places/search?q=${encodeURIComponent(text)}`
+    `/places/search?q=${
+      encodeURIComponent(text)
+    }`
   );
 
-  const data = await response.json();
+  if (!response.ok) {
+    return [];
+  }
+
+  const data =
+    await response.json();
 
   return data.results;
 }
@@ -182,48 +297,73 @@ async function updateResults(
   type
 ) {
 
-  const results = await searchPlaces(input.value);
+  const results =
+    await searchPlaces(
+      input.value
+    );
 
   resultBox.innerHTML = "";
 
-  results.forEach(place => {
+  results.forEach(
+    place => {
 
-    const element = document.createElement("div");
+      const element =
+        document.createElement(
+          "div"
+        );
 
-    element.className = "result";
+      element.className =
+        "result";
 
-    element.innerText = place.name;
+      element.innerText =
+        place.name;
 
-    element.onclick = () => {
+      element.onclick =
+        () => {
 
-      input.value = place.name;
+          input.value =
+            place.name;
 
-      resultBox.innerHTML = "";
+          resultBox.innerHTML =
+            "";
 
-      selectPlace(type, place);
-    };
+          selectPlace(
+            type,
+            place
+          );
+        };
 
-    resultBox.appendChild(element);
-  });
+      resultBox.appendChild(
+        element
+      );
+    }
+  );
 }
 
 
-function selectPlace(type, place) {
+function selectPlace(
+  type,
+  place
+) {
 
   const position = [
     place.latitude,
     place.longitude
   ];
 
+
   if (type === "origin") {
 
     origin = place;
 
     if (originMarker) {
-      map.removeLayer(originMarker);
+      map.removeLayer(
+        originMarker
+      );
     }
 
-    originMarker = L.marker(position)
+    originMarker =
+      L.marker(position)
       .addTo(map)
       .bindPopup("Start");
 
@@ -232,126 +372,188 @@ function selectPlace(type, place) {
     destination = place;
 
     if (destinationMarker) {
-      map.removeLayer(destinationMarker);
+      map.removeLayer(
+        destinationMarker
+      );
     }
 
-    destinationMarker = L.marker(position)
+    destinationMarker =
+      L.marker(position)
       .addTo(map)
-      .bindPopup("Destination");
+      .bindPopup(
+        "Destination"
+      );
   }
 
-  map.setView(position, 15);
+
+  map.setView(
+    position,
+    15
+  );
 }
 
 
 document
-  .getElementById("originSearch")
-  .addEventListener("input", event => {
+  .getElementById(
+    "originSearch"
+  )
+  .addEventListener(
+    "input",
+    event => {
 
-    updateResults(
-      event.target,
-      document.getElementById("originResults"),
-      "origin"
-    );
-  });
-
-
-document
-  .getElementById("destinationSearch")
-  .addEventListener("input", event => {
-
-    updateResults(
-      event.target,
-      document.getElementById("destinationResults"),
-      "destination"
-    );
-  });
-
-
-async function calculateRoute() {
-
-  if (!origin || !destination) {
-
-    document.getElementById("summary").innerText =
-      "Select both a starting point and destination.";
-
-    return;
-  }
-
-  document.getElementById("summary").innerText =
-    "Calculating route...";
-
-
-  const response = await fetch(
-    "/routes/compare",
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify({
-
-        origin: {
-          latitude: origin.latitude,
-          longitude: origin.longitude
-        },
-
-        destination: {
-          latitude: destination.latitude,
-          longitude: destination.longitude
-        },
-
-        profile: {
-
-          wheelchair:
-            document
-              .getElementById("wheelchair")
-              .checked,
-
-          avoid_stairs:
-            document
-              .getElementById("avoidStairs")
-              .checked,
-
-          max_gradient:
-            parseFloat(
-              document
-                .getElementById("maxGradient")
-                .value
-            ),
-
-          require_lift: false
-        }
-      })
+      updateResults(
+        event.target,
+        document.getElementById(
+          "originResults"
+        ),
+        "origin"
+      );
     }
   );
 
 
-  const data = await response.json();
+document
+  .getElementById(
+    "destinationSearch"
+  )
+  .addEventListener(
+    "input",
+    event => {
+
+      updateResults(
+        event.target,
+        document.getElementById(
+          "destinationResults"
+        ),
+        "destination"
+      );
+    }
+  );
+
+
+async function calculateRoute() {
+
+  const summary =
+    document.getElementById(
+      "summary"
+    );
+
+
+  if (!origin || !destination) {
+
+    summary.innerText =
+      "Please select both locations.";
+
+    return;
+  }
+
+
+  summary.innerText =
+    "Analysing routes...";
+
+
+  const riskWeight =
+    parseFloat(
+      riskSlider.value
+    );
+
+
+  const response =
+    await fetch(
+      "/routes/ml-compare",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+          origin: {
+            latitude:
+              origin.latitude,
+
+            longitude:
+              origin.longitude
+          },
+
+          destination: {
+            latitude:
+              destination.latitude,
+
+            longitude:
+              destination.longitude
+          },
+
+          profile: {
+
+            wheelchair:
+              document
+              .getElementById(
+                "wheelchair"
+              )
+              .checked,
+
+            avoid_stairs:
+              document
+              .getElementById(
+                "avoidStairs"
+              )
+              .checked,
+
+            max_gradient:
+              parseFloat(
+                document
+                .getElementById(
+                  "maxGradient"
+                )
+                .value
+              ),
+
+            require_lift: false
+          },
+
+          ml_risk_weight:
+            riskWeight
+        })
+      }
+    );
+
+
+  const data =
+    await response.json();
 
 
   if (!response.ok) {
 
-    document.getElementById("summary").innerText =
-      data.detail || "No route found.";
+    summary.innerText =
+      data.detail ||
+      "Unable to calculate route.";
 
     return;
   }
 
 
   if (accessibleLine) {
-    map.removeLayer(accessibleLine);
+    map.removeLayer(
+      accessibleLine
+    );
   }
 
-  if (standardLine) {
-    map.removeLayer(standardLine);
+  if (mlLine) {
+    map.removeLayer(
+      mlLine
+    );
   }
 
 
   const accessibleCoords =
-    data.accessible_route.coordinates.map(
+    data
+    .accessible_route
+    .coordinates
+    .map(
       point => [
         point.latitude,
         point.longitude
@@ -359,8 +561,11 @@ async function calculateRoute() {
     );
 
 
-  const standardCoords =
-    data.standard_route.coordinates.map(
+  const mlCoords =
+    data
+    .ml_aware_route
+    .coordinates
+    .map(
       point => [
         point.latitude,
         point.longitude
@@ -368,61 +573,152 @@ async function calculateRoute() {
     );
 
 
-  standardLine = L.polyline(
-    standardCoords,
-    {
-      dashArray: "8,8",
-      weight: 4,
-      opacity: 0.6
-    }
-  ).addTo(map);
+  accessibleLine =
+    L.polyline(
+      accessibleCoords,
+      {
+        dashArray: "8,8",
+        weight: 4,
+        opacity: 0.7
+      }
+    )
+    .addTo(map);
 
 
-  accessibleLine = L.polyline(
-    accessibleCoords,
-    {
-      weight: 6
-    }
-  ).addTo(map);
+  mlLine =
+    L.polyline(
+      mlCoords,
+      {
+        weight: 6
+      }
+    )
+    .addTo(map);
 
 
   map.fitBounds(
-    accessibleLine.getBounds()
+    mlLine.getBounds()
   );
 
 
-  const comparison = data.comparison;
+  const accessible =
+    data.accessible_route;
+
+  const ml =
+    data.ml_aware_route;
+
+  const tradeoff =
+    data.tradeoff;
 
 
-  document.getElementById("summary").innerHTML = `
+  let outcome = "";
 
-    <strong>Accessible route</strong><br>
 
-    Distance:
-    ${(data.accessible_route.distance_m / 1000).toFixed(2)}
-    km
+  if (
+    tradeoff.risk_reduction > 0
+  ) {
+
+    outcome =
+      `<b>
+        ${tradeoff
+          .risk_reduction_percent
+          .toFixed(1)}%
+        lower ML accessibility risk
+       </b>`;
+
+  } else {
+
+    outcome =
+      "<b>Both routes have similar ML risk.</b>";
+  }
+
+
+  summary.innerHTML = `
+
+    <strong>
+      Standard accessible route
+    </strong>
 
     <br>
 
-    Accessibility score:
-    ${data.accessible_route.accessibility_score}/100
+    Distance:
+    ${(accessible.distance_m / 1000)
+      .toFixed(2)} km
+
+    <br>
+
+    Average ML risk:
+    ${accessible.ml
+      .average_risk_score}/100
+
+    <br>
+
+    Anomaly segments:
+    ${accessible.ml
+      .anomaly_segments}
+
 
     <br><br>
 
-    <strong>Compared with shortest route</strong><br>
+
+    <strong>
+      ML-aware route
+    </strong>
+
+    <br>
+
+    Distance:
+    ${(ml.distance_m / 1000)
+      .toFixed(2)} km
+
+    <br>
+
+    Average ML risk:
+    ${ml.ml
+      .average_risk_score}/100
+
+    <br>
+
+    Maximum segment risk:
+    ${ml.ml
+      .maximum_risk_score}/100
+
+    <br>
+
+    Anomaly segments:
+    ${ml.ml
+      .anomaly_segments}
+
+
+    <br><br>
+
+
+    <strong>
+      Trade-off
+    </strong>
+
+    <br>
 
     Extra distance:
-    ${comparison.extra_distance_m.toFixed(0)} m
+    ${tradeoff
+      .extra_distance_m
+      .toFixed(0)} m
 
     <br>
 
-    Stairs avoided:
-    ${comparison.stairs_avoided}
+    Risk reduction:
+    ${tradeoff
+      .risk_reduction
+      .toFixed(2)}
+    points
 
     <br>
 
-    Steep sections avoided:
-    ${comparison.steep_segments_avoided}
+    ${outcome}
+
+    <br><br>
+
+    ML influence:
+    ${tradeoff.risk_weight}/20
   `;
 }
 
@@ -432,38 +728,65 @@ function resetRoute() {
   origin = null;
   destination = null;
 
+
   document.getElementById(
     "originSearch"
   ).value = "";
+
 
   document.getElementById(
     "destinationSearch"
   ).value = "";
 
+
   document.getElementById(
     "summary"
   ).innerHTML = "";
 
+
   if (originMarker) {
-    map.removeLayer(originMarker);
+    map.removeLayer(
+      originMarker
+    );
   }
 
   if (destinationMarker) {
-    map.removeLayer(destinationMarker);
+    map.removeLayer(
+      destinationMarker
+    );
   }
 
   if (accessibleLine) {
-    map.removeLayer(accessibleLine);
+    map.removeLayer(
+      accessibleLine
+    );
   }
 
-  if (standardLine) {
-    map.removeLayer(standardLine);
+  if (mlLine) {
+    map.removeLayer(
+      mlLine
+    );
   }
+
 
   originMarker = null;
   destinationMarker = null;
   accessibleLine = null;
-  standardLine = null;
+  mlLine = null;
+
+
+  riskSlider.value = 5;
+
+  document.getElementById(
+    "riskValue"
+  ).innerText =
+    "ML risk weighting: 5";
+
+
+  map.setView(
+    [53.4808, -2.2426],
+    13
+  );
 }
 
 </script>
