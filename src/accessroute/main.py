@@ -322,6 +322,18 @@ def compare_ml_route_options(
             detail=str(exc),
         ) from exc
 
+    result["accessible_route"]["explanation"] = explain_route(
+        graph,
+        result["accessible_route"]["path"],
+        request.profile,
+    )
+
+    result["ml_aware_route"]["explanation"] = explain_route(
+        graph,
+        result["ml_aware_route"]["path"],
+        request.profile,
+    )
+
     for route_name in (
         "accessible_route",
         "ml_aware_route",
@@ -347,3 +359,7 @@ def compare_ml_route_options(
         "ml_scores_attached":
             scores_attached,
     }
+
+from src.accessroute.ml_explain import (
+    explain_route,
+)
