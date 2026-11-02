@@ -192,6 +192,17 @@
     ML risk weighting: 5
   </div>
 
+  <label>
+    <input
+      type="checkbox"
+      id="showRiskSegments"
+      checked
+    >
+    Show ML risk hotspots
+  </label>
+
+  <br><br>
+
 
   <button onclick="calculateRoute()">
     Find route
@@ -248,12 +259,28 @@ let destinationMarker = null;
 
 let accessibleLine = null;
 let mlLine = null;
+let riskLayer = L.layerGroup().addTo(map);
 
 
 const riskSlider =
   document.getElementById(
     "riskWeight"
   );
+
+const riskToggle =
+  document.getElementById(
+    "showRiskSegments"
+  );
+
+riskToggle.addEventListener(
+  "change",
+  function () {
+
+    if (!this.checked) {
+      riskLayer.clearLayers();
+    }
+  }
+);
 
 
 riskSlider.addEventListener(
@@ -431,6 +458,76 @@ document
   );
 
 
+
+function drawRiskSegments(explanation) {
+
+  riskLayer.clearLayers();
+
+  const showRisk =
+    document
+      .getElementById(
+        "showRiskSegments"
+      )
+      .checked;
+
+  if (!showRisk || !explanation) {
+    return;
+  }
+
+  explanation.top_risk_segments
+    .forEach(segment => {
+
+      const coords =
+        segment.coordinates.map(
+          point => [
+            point.latitude,
+            point.longitude
+          ]
+        );
+
+      let colour = "#f4a261";
+
+      if (
+        segment.risk_level === "high"
+      ) {
+        colour = "#d62828";
+      }
+
+      const line =
+        L.polyline(
+          coords,
+          {
+            color: colour,
+            weight: 9,
+            opacity: 0.85
+          }
+        );
+
+      const reasons =
+        segment.reasons.length
+          ? segment.reasons.join("<br>")
+          : "No specific barrier metadata available";
+
+      line.bindPopup(`
+        <b>ML accessibility risk</b><br>
+        Risk score:
+        ${segment.ml_risk_score}/100
+        <br>
+        Level:
+        ${segment.risk_level}
+        <br><br>
+        <b>Signals</b><br>
+        ${reasons}
+        <br><br>
+        Segment length:
+        ${segment.distance_m} m
+      `);
+
+      riskLayer.addLayer(line);
+    });
+}
+
+
 async function calculateRoute() {
 
   const summary =
@@ -599,6 +696,10 @@ async function calculateRoute() {
     mlLine.getBounds()
   );
 
+  drawRiskSegments(
+    data.ml_aware_route.explanation
+  );
+
 
   const accessible =
     data.accessible_route;
@@ -688,6 +789,18 @@ async function calculateRoute() {
     ${ml.ml
       .anomaly_segments}
 
+    <br>
+
+    High-risk segments:
+    ${ml.explanation
+      .high_risk_segments}
+
+    <br>
+
+    Medium-risk segments:
+    ${ml.explanation
+      .medium_risk_segments}
+
 
     <br><br>
 
@@ -724,6 +837,8 @@ async function calculateRoute() {
 
 
 function resetRoute() {
+
+  riskLayer.clearLayers();
 
   origin = null;
   destination = null;
