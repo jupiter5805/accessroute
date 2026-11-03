@@ -363,3 +363,40 @@ def compare_ml_route_options(
 from src.accessroute.ml_explain import (
     explain_route,
 )
+
+
+from fastapi import Query
+from fastapi.responses import FileResponse
+from src.accessroute.barriers import (
+    BarrierReportIn,
+    BarrierReportOut,
+    create_barrier_report,
+    list_barrier_reports,
+)
+
+
+@app.post(
+    "/barriers/reports",
+    response_model=BarrierReportOut,
+    status_code=201,
+)
+def submit_barrier_report(report: BarrierReportIn):
+    return create_barrier_report(report)
+
+
+@app.get(
+    "/barriers/reports",
+    response_model=list[BarrierReportOut],
+)
+def get_barrier_reports(
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    return list_barrier_reports(limit)
+
+
+@app.get("/barriers-ui.js", include_in_schema=False)
+def barrier_reporting_script():
+    return FileResponse(
+        "static/barrier-reports.js",
+        media_type="application/javascript",
+    )
