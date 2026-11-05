@@ -45,3 +45,12 @@ segment and check directionality. A reverse-direction edge may require separate
 review/reporting. The routing prototype is not a safety-certified navigation aid.
 
 The sample-JSON `/routes` endpoint is intentionally unaffected by live closures.
+
+## Phase 12 Integration Verification
+
+Verified on 5 November 2026:
+- All 45 automated tests passed
+- PostgreSQL/PostGIS migration completed successfully
+- Manchester routing graph loaded with 33,052 nodes and 85,997 edges
+- Docker PostgreSQL and Airflow services running successfully
+- Live moderation-to-rerouting integration test remains pending
