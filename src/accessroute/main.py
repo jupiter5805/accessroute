@@ -400,3 +400,30 @@ def barrier_reporting_script():
         "static/barrier-reports.js",
         media_type="application/javascript",
     )
+
+
+# Moderator-only API endpoints; no credentials are exposed in the map UI.
+from fastapi import Depends
+from src.accessroute.moderation import (
+    ReviewDecision,
+    find_report_edges,
+    require_admin,
+    review_barrier_report,
+)
+
+
+@app.get("/barriers/reports/{report_id}/candidates")
+def get_barrier_candidates(
+    report_id: int,
+    _authorised: None = Depends(require_admin),
+):
+    return {"report_id": report_id, "candidates": find_report_edges(report_id)}
+
+
+@app.post("/barriers/reports/{report_id}/review")
+def review_barrier(
+    report_id: int,
+    decision: ReviewDecision,
+    _authorised: None = Depends(require_admin),
+):
+    return review_barrier_report(report_id, decision)

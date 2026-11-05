@@ -26,16 +26,24 @@ def load_graph_from_postgres() -> nx.DiGraph:
         edges = connection.execute(
             text("""
                 SELECT
-                    source,
-                    target,
-                    distance_m,
-                    gradient,
-                    has_stairs,
-                    has_lift,
-                    surface,
-                    wheelchair_accessible
-                FROM route_edges
-                ORDER BY distance_m
+                    e.id AS edge_id,
+                    e.source,
+                    e.target,
+                    e.distance_m,
+                    e.gradient,
+                    e.has_stairs,
+                    e.has_lift,
+                    e.surface,
+                    e.wheelchair_accessible
+                FROM route_edges AS e
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM barrier_reports AS r
+                    WHERE r.edge_id = e.id
+                      AND r.status = 'verified'
+                      AND r.report_type IN ('blocked_pavement', 'construction')
+                      AND r.expires_at > NOW()
+                )
+                ORDER BY e.distance_m
             """)
         )
 
@@ -52,6 +60,7 @@ def load_graph_from_postgres() -> nx.DiGraph:
             graph.add_edge(
                 source,
                 target,
+                edge_id=row["edge_id"],
                 distance_m=row["distance_m"],
                 gradient=row["gradient"],
                 has_stairs=row["has_stairs"],
