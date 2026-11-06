@@ -427,3 +427,35 @@ def review_barrier(
     _authorised: None = Depends(require_admin),
 ):
     return review_barrier_report(report_id, decision)
+
+
+# Phase 13: public dashboard shell, protected moderator data and actions.
+# The static UI includes no credentials; the operator enters the key at runtime.
+from typing import Literal
+from fastapi import Response
+from src.accessroute.moderation import list_reports_for_review
+
+
+@app.get("/moderator", include_in_schema=False)
+def moderator_dashboard():
+    return FileResponse("static/moderator.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/moderator.js", include_in_schema=False)
+def moderator_dashboard_script():
+    return FileResponse(
+        "static/moderator.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/barriers/moderation/reports")
+def moderator_reports(
+    response: Response,
+    status: Literal["pending", "verified", "rejected"] = "pending",
+    limit: int = Query(default=100, ge=1, le=200),
+    _authorised: None = Depends(require_admin),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return {"reports": list_reports_for_review(status, limit)}

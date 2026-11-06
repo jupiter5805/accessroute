@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>AccessRoute | Moderator dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root { font-family: system-ui, -apple-system, sans-serif; color: #172438; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f2f5f9; }
+    header { padding: 16px 22px; background: #132741; color: white; }
+    header h1 { margin: 0 0 4px; font-size: 22px; }
+    header p { margin: 0; opacity: .8; font-size: 13px; }
+    main { padding: 16px; display: grid; grid-template-columns: 325px minmax(0, 1fr) 330px; gap: 14px; }
+    section { background: white; border: 1px solid #dce4ed; border-radius: 12px; padding: 14px; min-width: 0; }
+    h2 { font-size: 16px; margin: 0 0 12px; }
+    label { display: block; font-weight: 600; font-size: 13px; margin: 10px 0 5px; }
+    input, select, button { width: 100%; padding: 9px; font: inherit; }
+    input, select { border: 1px solid #bac7d3; border-radius: 6px; }
+    button { border: none; border-radius: 7px; background: #145fbb; color: white; cursor: pointer; margin: 8px 0 0; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    button.secondary { background: #5d6674; }
+    button.danger { background: #a52a32; }
+    button.item { background: #f6f8fc; color: #192c43; border: 1px solid #dbe3eb; text-align: left; line-height: 1.45; }
+    button.item.selected { border-color: #145fbb; background: #e9f2ff; }
+    #reportList { max-height: 56vh; overflow: auto; }
+    #map { height: min(77vh, 780px); min-height: 400px; border-radius: 8px; background: #e5ebee; }
+    #status, #reviewStatus { font-size: 13px; line-height: 1.5; min-height: 18px; }
+    .subtext { color: #667184; font-size: 12px; line-height: 1.5; }
+    #reportDetail { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; }
+    #candidateList { max-height: 170px; overflow: auto; }
+    .mapFallback { font-size: 12px; color: #666; }
+    @media (max-width: 1020px) { main { grid-template-columns: 1fr; } #reportList { max-height: 330px; } #map { height: 400px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AccessRoute Moderator Dashboard</h1>
+    <p>Review community accessibility reports. Only verified, active closures can affect routing.</p>
+  </header>
+  <main>
+    <section aria-label="Report list">
+      <h2>Reports</h2>
+      <label for="adminKey">Moderator key</label>
+      <input id="adminKey" type="password" autocomplete="off" placeholder="Enter ACCESSROUTE_ADMIN_KEY">
+      <p class="subtext">Key is held only in this page's memory and is not saved in browser storage.</p>
+      <label for="statusFilter">Report status</label>
+      <select id="statusFilter">
+        <option value="pending">Pending</option>
+        <option value="verified">Verified</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      <button id="loadReports">Load reports</button>
+      <p id="status" role="status" aria-live="polite">Enter your moderator key to begin.</p>
+      <div id="reportList" aria-label="Barrier reports"></div>
+    </section>
+    <section aria-label="Barrier map">
+      <h2>Manchester barrier map</h2>
+      <div id="map" role="region" aria-label="Map of reported barrier locations"></div>
+      <p class="subtext">Street-segment candidates are approximate straight lines between OSM endpoints. Inspect the location and direction before approval.</p>
+    </section>
+    <section aria-label="Review selected report">
+      <h2>Review</h2>
+      <div id="reportDetail">Select a report to review it.</div>
+      <div id="reviewForm" hidden>
+        <label for="candidateSelect">Street segment (for blockages or construction)</label>
+        <select id="candidateSelect"><option value="">No segment selected</option></select>
+        <div id="candidateList" class="subtext"></div>
+        <label for="durationHours">Closure duration in hours</label>
+        <input id="durationHours" type="number" min="1" max="720" value="168">
+        <button id="approve" type="button">Verify report</button>
+        <button id="reject" class="danger" type="button">Reject report</button>
+        <p id="reviewStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/moderator.js" defer></script>
+</body>
+</html>

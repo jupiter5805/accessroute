@@ -53,6 +53,10 @@ def find_report_edges(report_id: int):
 
         rows = connection.execute(text("""
             SELECT e.id AS edge_id, e.source, e.target,
+                   s.latitude AS source_latitude,
+                   s.longitude AS source_longitude,
+                   t.latitude AS target_latitude,
+                   t.longitude AS target_longitude,
                    ROUND(ST_Distance(
                        r.location,
                        ST_MakeLine(s.location::geometry,
@@ -133,3 +137,21 @@ def review_barrier_report(report_id: int, decision: ReviewDecision):
             "report_id": report_id,
         }).mappings().one()
         return dict(result)
+
+
+
+def list_reports_for_review(status: str = "pending", limit: int = 100):
+    """List reports for authenticated moderators, newest first.
+
+    The API validates status and limit; the SQL always binds both parameters.
+    """
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT id, latitude, longitude, report_type, description,
+                   status, created_at, reviewed_at, expires_at, edge_id
+            FROM barrier_reports
+            WHERE status = :status
+            ORDER BY created_at DESC, id DESC
+            LIMIT :limit
+        """), {"status": status, "limit": limit}).mappings().all()
+        return [dict(row) for row in rows]

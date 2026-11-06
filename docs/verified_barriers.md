@@ -54,3 +54,26 @@ Verified on 5 November 2026:
 - Manchester routing graph loaded with 33,052 nodes and 85,997 edges
 - Docker PostgreSQL and Airflow services running successfully
 - Live moderation-to-rerouting integration test remains pending
+
+## Phase 13 moderator dashboard
+
+Open `http://127.0.0.1:8002/moderator` while running FastAPI on port 8002.
+The dashboard provides a Leaflet map of report locations, status filtering,
+nearby candidate street segments, and verify/reject controls. Candidate lines
+use endpoint-to-endpoint approximations and must be checked manually.
+
+Start the server with `ACCESSROUTE_ADMIN_KEY` set to a strong secret, then
+enter that key into the dashboard. The key is kept in the current page's
+JavaScript memory only; it is not embedded in the HTML, stored in browser
+storage, or sent in query parameters. Moderator data and decisions are only
+available through endpoints requiring the `X-Admin-Key` header.
+
+For local testing:
+
+```bash
+export ACCESSROUTE_ADMIN_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+uvicorn src.accessroute.main:app --reload --port 8002
+```
+
+A production deployment would require proper user authentication, TLS, audit
+logs, and stronger safeguards before real users rely on the route results.
