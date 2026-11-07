@@ -59,3 +59,24 @@ AccessRoute supports community-submitted accessibility barrier reports across Ma
 - PostgreSQL/PostGIS integration verified.
 
 Future development includes a visual moderation dashboard and decision audit history.
+
+## Community Accessibility Reporting & Moderation
+
+AccessRoute supports community-submitted accessibility barrier reports across Manchester.
+
+### Features
+- Report blocked pavements, construction obstacles and accessibility barriers.
+- Store geolocated reports in PostgreSQL/PostGIS.
+- Review and approve reports through protected FastAPI endpoints.
+- Match verified barriers to nearby OpenStreetMap street segments.
+- Exclude verified, active closures from route calculations.
+- Automatically stop applying expired closures.
+- Preserve unverified reports without affecting routing decisions.
+
+### Validation
+- 45 automated tests passed after Phase 12.
+- Manchester network: 33,052 nodes.
+- Routing graph: 85,997 edges.
+- PostgreSQL/PostGIS integration verified.
+
+Future development includes a visual moderation dashboard and decision audit history.
