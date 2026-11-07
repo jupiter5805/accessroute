@@ -195,5 +195,34 @@
   $('loadReports').addEventListener('click', loadReports);
   $('statusFilter').addEventListener('change', () => { if (adminKey) loadReports(); });
   $('approve').addEventListener('click', () => submitReview('verified'));
+  async function loadAudit() {
+    adminKey = $('adminKey').value.trim();
+    if (!adminKey) {
+      $('auditStatus').textContent = 'Enter your moderator key first.';
+      return;
+    }
+    $('auditStatus').textContent = 'Loading recent moderation decisions...';
+    const root = $('auditList');
+    clearChildren(root);
+    try {
+      const result = await api('/barriers/moderation/audit?limit=30&offset=0');
+      if (!result.events.length) {
+        $('auditStatus').textContent = 'No moderation decisions recorded yet.';
+        return;
+      }
+      for (const event of result.events) {
+        const entry = document.createElement('p');
+        const edge = event.edge_id === null ? 'informational' : `edge #${event.edge_id}`;
+        entry.textContent = `Report #${event.report_id}: ${event.decision} (${edge}) · ` +
+          new Date(event.recorded_at).toLocaleString();
+        root.appendChild(entry);
+      }
+      $('auditStatus').textContent = `${result.events.length} recent decision(s) loaded.`;
+    } catch (error) {
+      $('auditStatus').textContent = `Could not load audit history: ${error.message}`;
+    }
+  }
+
+  $('loadAudit').addEventListener('click', loadAudit);
   $('reject').addEventListener('click', () => submitReview('rejected'));
 })();

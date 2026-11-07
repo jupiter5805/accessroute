@@ -459,3 +459,18 @@ def moderator_reports(
 ):
     response.headers["Cache-Control"] = "no-store"
     return {"reports": list_reports_for_review(status, limit)}
+
+
+# Phase 14: read-only review history; access uses the same moderator key.
+from src.accessroute.moderation import list_review_events
+
+
+@app.get("/barriers/moderation/audit")
+def moderator_audit_history(
+    response: Response,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _authorised: None = Depends(require_admin),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return {"events": list_review_events(limit, offset)}

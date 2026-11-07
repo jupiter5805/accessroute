@@ -77,3 +77,29 @@ uvicorn src.accessroute.main:app --reload --port 8002
 
 A production deployment would require proper user authentication, TLS, audit
 logs, and stronger safeguards before real users rely on the route results.
+
+## Phase 14 — Transactional moderation audit history
+
+Run the audit migration **before** approving or rejecting further reports:
+
+```bash
+python -m src.accessroute.database.setup_audit
+```
+
+Every successful review creates one `barrier_review_events` entry in the **same
+PostgreSQL transaction** as the report update. A failed event insert causes the
+review update to roll back. Historical entries preserve the report identifier,
+decision, selected edge ID and closure duration; they do not establish an
+individual moderator identity because the current local-only authentication
+uses a shared secret.
+
+- `GET /barriers/moderation/audit?limit=50&offset=0` is protected by
+  `X-Admin-Key` and returns newest-first review decisions.
+- In `/moderator`, enter the local moderation key and select **Load audit
+  history** to view the 30 most recent entries.
+- Decisions made **before Phase 14** are not backfilled; existing records have
+  no trustworthy individual event timestamps beyond the report review time.
+
+This is an application-level audit trail rather than tamper-proof logging.
+Production deployment still requires per-moderator identities, structured
+logging, access controls, TLS and operational monitoring.

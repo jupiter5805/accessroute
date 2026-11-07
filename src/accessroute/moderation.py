@@ -136,6 +136,18 @@ def review_barrier_report(report_id: int, decision: ReviewDecision):
             "valid_hours": decision.valid_hours,
             "report_id": report_id,
         }).mappings().one()
+        # The audit event is inserted in the SAME database transaction as the
+        # review update: either both succeed, or both roll back.
+        connection.execute(text("""
+            INSERT INTO barrier_review_events
+                (report_id, decision, edge_id, valid_hours)
+            VALUES (:report_id, :decision, :edge_id, :valid_hours)
+        """), {
+            "report_id": report_id,
+            "decision": decision.status,
+            "edge_id": decision.edge_id if closure else None,
+            "valid_hours": decision.valid_hours if closure else None,
+        })
         return dict(result)
 
 
@@ -154,4 +166,17 @@ def list_reports_for_review(status: str = "pending", limit: int = 100):
             ORDER BY created_at DESC, id DESC
             LIMIT :limit
         """), {"status": status, "limit": limit}).mappings().all()
+        return [dict(row) for row in rows]
+
+
+
+def list_review_events(limit: int = 50, offset: int = 0):
+    """Private audit history, newest decisions first (no public route data)."""
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT id, report_id, decision, edge_id, valid_hours, recorded_at
+            FROM barrier_review_events
+            ORDER BY recorded_at DESC, id DESC
+            LIMIT :limit OFFSET :offset
+        """), {'limit': limit, 'offset': offset}).mappings().all()
         return [dict(row) for row in rows]
