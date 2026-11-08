@@ -474,3 +474,19 @@ def moderator_audit_history(
 ):
     response.headers["Cache-Control"] = "no-store"
     return {"events": list_review_events(limit, offset)}
+
+
+# Phase 15: admin-only aggregate metrics; no user-submitted descriptions
+# or raw coordinates are exposed by this endpoint.
+from fastapi import Depends as MetricsDepends, Response as MetricsResponse
+from src.accessroute.moderation import require_admin as require_metrics_admin
+from src.accessroute.barrier_metrics import get_barrier_metrics as load_barrier_metrics
+
+
+@app.get("/barriers/moderation/metrics")
+def moderator_barrier_metrics(
+    response: MetricsResponse,
+    _authorised: None = MetricsDepends(require_metrics_admin),
+):
+    response.headers["Cache-Control"] = "no-store"
+    return load_barrier_metrics()
