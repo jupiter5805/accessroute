@@ -71,3 +71,24 @@ def test_barrier_ui_available():
 
     assert response.status_code == 200
     assert "javascript" in response.headers["content-type"]
+
+
+def test_invalid_barrier_coordinates_are_rejected():
+    invalid_locations = [
+        (91.0, -2.2426),
+        (-91.0, -2.2426),
+        (53.4808, 181.0),
+        (53.4808, -181.0),
+    ]
+
+    for latitude, longitude in invalid_locations:
+        response = client.post(
+            "/barriers/reports",
+            json={
+                **PAYLOAD,
+                "latitude": latitude,
+                "longitude": longitude,
+            },
+        )
+
+        assert response.status_code == 422
